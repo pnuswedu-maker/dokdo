@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>독도: 역사의 기록, 진실의 연대기</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Noto Sans KR', sans-serif; background-color: #fafaf9; color: #1c1917; }
+        .timeline-line { position: absolute; left: 50%; transform: translateX(-50%); width: 2px; height: 100%; background-color: #e7e5e4; z-index: 0; }
+        .timeline-dot { z-index: 10; transition: all 0.3s ease; }
+        .timeline-card { transition: all 0.3s ease; }
+        .timeline-card:hover { transform: translateY(-4px); box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05); }
+        .filter-btn.active, .dict-filter-btn.active { background-color: #0c4a6e; color: white; border-color: #0c4a6e; }
+        
+        .chart-wrapper {
+            position: relative;
+            width: 100%;
+            max-width: 700px;
+            margin: 0 auto;
+            height: 350px;
+        }
+        @media (max-width: 640px) {
+            .timeline-line { left: 20px; transform: none; }
+            .chart-wrapper { height: 300px; }
+        }
+        .dict-card { transition: all 0.2s ease; border-left-width: 4px; }
+        .dict-card:hover { transform: scale(1.02); }
+    </style>
+    <!-- Chosen Palette: Warm Neutrals & Deep Sea Blue (Stone for bg, Sky/Blue for accents) -->
+    <!-- Application Structure Plan:
+        1. Hero Section: Emotional connection and home navigation.
+        2. Analytics Dashboard: Visualizing data density across centuries.
+        3. Interactive Timeline: Chronological exploration of major events with filters.
+        4. NEW: Knowledge Encyclopedia (Dictionary): A searchable, categorized grid of key terms, documents, and figures. 
+           This was added to synthesize the specific "Key Term Dictionary" content into an easily explorable format.
+        5. Synthesis & Summary: Reinforcing the core message.
+        Rationale: Integrating the dictionary content alongside the timeline allows users to cross-reference terms (e.g., 'Usando') with actual timeline events (e.g., '1454 Sejong Sillok').
+    -->
+    <!-- Visualization & Content Choices:
+        1. Event Density (Chart.js): Bar chart for quantitative historical depth.
+        2. Dynamic Timeline (HTML/JS): Vertical flow for chronological understanding.
+        3. Dictionary Grid (HTML/JS): Card-based layout for conceptual clarity.
+        4. Category Filtering: Allowing users to focus on specific types of evidence (Names, Laws, People).
+    -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+</head>
+<body class="antialiased min-h-screen flex flex-col">
+
+    <!-- Header / Hero -->
+    <header class="bg-stone-900 text-stone-100 py-12 px-4 sm:px-6 lg:px-8 relative overflow-hidden">
+        <div class="absolute top-4 left-4 z-20">
+            <a href="index.html" class="flex items-center gap-2 bg-white/10 hover:bg-white/20 backdrop-blur-md text-white px-4 py-2 rounded-full border border-white/20 transition-all text-sm font-medium">
+                <span>🏠</span>
+                <span>홈으로</span>
+            </a>
+        </div>
+
+        <div class="max-w-4xl mx-auto relative z-10 text-center pt-8 sm:pt-4">
+            <h1 class="text-4xl sm:text-5xl font-black mb-4 tracking-tight text-sky-400">독도, 역사의 진실</h1>
+            <p class="text-lg sm:text-xl text-stone-300 max-w-2xl mx-auto font-light leading-relaxed">
+                1454년부터 오늘날까지, 문헌과 법령이 증명하는 <span class="text-sky-200 font-semibold">대한민국 영토 주권</span>의 증거들을 확인하세요.
+            </p>
+        </div>
+        <div class="absolute top-0 left-0 w-full h-full opacity-10 bg-[url('https://images.unsplash.com/photo-1549558549-415a1cd1685c?q=80&w=2000&auto=format&fit=crop')] bg-cover bg-center"></div>
+    </header>
+
+    <main class="flex-grow w-full max-w-5xl mx-auto px-4 sm:px-6 py-12 space-y-20">
+
+        <!-- Section 1: Analytics -->
+        <section>
+            <div class="mb-8 text-center sm:text-left">
+                <h2 class="text-2xl font-bold text-stone-800 flex items-center justify-center sm:justify-start gap-2">
+                    <span class="text-sky-600">📊</span> 데이터로 보는 독도 역사
+                </h2>
+                <p class="mt-2 text-stone-600 max-w-3xl">
+                    수백 년에 걸친 기록의 밀도는 독도가 우리 영토였음을 과학적으로 입증합니다. 
+                </p>
+            </div>
+
+            <div class="bg-white rounded-2xl shadow-sm border border-stone-200 p-6">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-8 items-center">
+                    <div class="md:col-span-2">
+                        <div class="chart-wrapper">
+                            <canvas id="eraChart"></canvas>
+                        </div>
+                    </div>
+                    <div class="space-y-6">
+                        <div class="bg-sky-50 p-5 rounded-xl border border-sky-100 text-center md:text-left">
+                            <h3 class="text-sm font-semibold text-sky-800 uppercase tracking-wider mb-1">총 기록된 주요 사건</h3>
+                            <p class="text-4xl font-bold text-sky-900" id="totalEvents">18건</p>
+                        </div>
+                        <div class="bg-stone-50 p-5 rounded-xl border border-stone-100 text-center md:text-left">
+                            <h3 class="text-sm font-semibold text-stone-500 uppercase tracking-wider mb-1">최초의 공식 기록</h3>
+                            <p class="text-xl font-bold text-stone-800">1454년</p>
+                            <p class="text-sm text-stone-600 mt-1">세종실록지리지</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 2: Encyclopedia (Key Terms) -->
+        <section id="dictionary-section">
+            <div class="mb-8 text-center sm:text-left">
+                <h2 class="text-2xl font-bold text-stone-800 flex items-center justify-center sm:justify-start gap-2">
+                    <span class="text-sky-600">📖</span> 독도 핵심 용어 사전
+                </h2>
+                <p class="mt-2 text-stone-600 max-w-3xl">
+                    독도 주권을 이해하기 위해 꼭 알아야 할 명칭, 고문서, 인물들을 정리했습니다. 
+                </p>
+            </div>
+
+            <!-- Search & Filters -->
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-stone-200 mb-6 space-y-4">
+                <div class="flex flex-col sm:flex-row gap-4">
+                    <div class="flex-grow">
+                        <input type="text" id="dictSearch" placeholder="용어 또는 내용을 검색하세요..." class="w-full px-4 py-2 rounded-lg border border-stone-300 focus:ring-2 focus:ring-sky-500 focus:border-sky-500 outline-none transition-all">
+                    </div>
+                    <div class="flex flex-wrap gap-2" id="dictFilters">
+                        <button class="dict-filter-btn active px-3 py-1.5 rounded-md text-sm border border-stone-300 bg-stone-50" data-category="all">전체</button>
+                        <button class="dict-filter-btn px-3 py-1.5 rounded-md text-sm border border-stone-300 bg-stone-50" data-category="name">명칭</button>
+                        <button class="dict-filter-btn px-3 py-1.5 rounded-md text-sm border border-stone-300 bg-stone-50" data-category="doc">고문서</button>
+                        <button class="dict-filter-btn px-3 py-1.5 rounded-md text-sm border border-stone-300 bg-stone-50" data-category="person">인물/사건</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Dictionary Grid -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" id="dictionary-grid">
+                <!-- Dynamic Content Injected Here -->
+            </div>
+        </section>
+
+        <!-- Section 3: Interactive Timeline -->
+        <section id="timeline-section">
+            <div class="flex flex-col sm:flex-row justify-between items-center mb-8 gap-4">
+                <div class="text-center sm:text-left">
+                    <h2 class="text-2xl font-bold text-stone-800 flex items-center justify-center sm:justify-start gap-2">
+                        <span class="text-sky-600">⏳</span> 연대기 탐색
+                    </h2>
+                    <p class="text-stone-500 text-sm mt-1">역사적 사건의 흐름을 필터링하여 확인해보세요.</p>
+                </div>
+                
+                <div class="flex flex-wrap justify-center gap-2" id="filters">
+                    <button class="filter-btn active px-4 py-2 rounded-full text-sm font-medium border border-stone-300 bg-white" data-filter="all">전체</button>
+                    <button class="filter-btn px-4 py-2 rounded-full text-sm font-medium border border-stone-300 bg-white" data-filter="kr_record">🇰🇷 한국 기록</button>
+                    <button class="filter-btn px-4 py-2 rounded-full text-sm font-medium border border-stone-300 bg-white" data-filter="jp_ack">🇯🇵 일본 인정</button>
+                    <button class="filter-btn px-4 py-2 rounded-full text-sm font-medium border border-stone-300 bg-white" data-filter="conflict">⚠️ 갈등/도발</button>
+                </div>
+            </div>
+
+            <div class="relative py-4" id="timeline-container">
+                <div class="timeline-line hidden sm:block"></div>
+            </div>
+        </section>
+
+        <!-- Section 4: Key Takeaway -->
+        <section class="bg-stone-800 rounded-3xl p-8 sm:p-12 text-center text-stone-300">
+            <h3 class="text-2xl sm:text-3xl font-bold text-white mb-6">"진실은 변하지 않습니다."</h3>
+            <p class="max-w-3xl mx-auto leading-relaxed text-lg mb-4">
+                수많은 고문서와 국제법적 근거는 독도가 대한민국 영토임을 일관되게 가리키고 있습니다. 
+            </p>
+            <div class="inline-block bg-sky-900/50 px-6 py-3 rounded-xl border border-sky-700/50 text-sky-200">
+                <span class="font-bold">대한제국 칙령 제41호 (1900)</span>: 독도 영유권을 법적으로 선포한 결정적 증거
+            </div>
+        </section>
+
+    </main>
+
+    <footer class="bg-white border-t border-stone-200 mt-12 py-8">
+        <div class="max-w-5xl mx-auto px-4 text-center text-stone-500 text-sm">
+            <p>© 2024 독도 역사 & 지식 아카이브</p>
+        </div>
+    </footer>
+
+    <script>
+        // --- Data Source: Timeline ---
+        const historyData = [
+            { year: 1454, title: "세종실록지리지", content: "우산(독도)과 무릉(울릉도)이 강원도 울진현에 속한다고 기록하여 독도를 우리 영토로 명시함.", type: "kr_record" },
+            { year: 1531, title: "신증동국여지승람", content: "독도가 우리 영토임을 다시 한번 밝히는 국가 차원의 관찬 지리지를 편찬함.", type: "kr_record" },
+            { year: 1667, title: "은주시청합기", content: "일본의 문헌임에도 불구하고 울릉도와 독도가 일본 영토 밖(조선 땅)임을 기록함.", type: "jp_ack" },
+            { year: 1693, title: "1차 안용복 사건", content: "안용복이 일본으로 끌려가 독도가 조선의 땅임을 당당히 주장함.", type: "kr_record" },
+            { year: 1696, title: "2차 안용복 사건", content: "일본에 건너가 불법 침범에 항의하였으며, 일본 막부가 '울릉도 도해 금지령'을 내리는 계기가 됨.", type: "kr_record" },
+            { year: 1785, title: "삼국접양지도", content: "일본의 하야시 시헤이가 제작한 지도로, 독도를 조선색(황색)으로 칠하고 '조선의 것'이라 표기함.", type: "jp_ack" },
+            { year: 1877, title: "태정관 지령", content: "일본 최고 행정기관이 \"독도와 울릉도는 일본과 관계없다\"고 공식적으로 인정함.", type: "jp_ack" },
+            { year: 1900, title: "대한제국 칙령 41호", content: "고종 황제가 독도를 울릉군의 관할 구역으로 명문화하여 공식 반포함.", type: "kr_record" },
+            { year: 1905, title: "시마네현 고시 40호", content: "일본이 러일전쟁 중 독도를 불법적으로 '다케시마'로 편입하는 무효한 행위를 함.", type: "conflict" },
+            { year: 1906, title: "심흥택 보고서", content: "울릉군수 심흥택이 독도의 일본 편입 소식을 듣고 중앙 정부에 긴급 보고함.", type: "kr_record" },
+            { year: 1946, title: "SCAPIN 제677호", content: "연합군최고사령관 지령으로, 독도를 일본의 행정 및 통치권에서 명확히 제외함.", type: "kr_record" },
+            { year: 1951, title: "샌프란시스코 강화조약", content: "일본의 한국 독립 인정을 명시했으나, 독도 명칭 누락으로 향후 분쟁의 불씨가 됨.", type: "conflict" },
+            { year: 1952, title: "평화선 선포", content: "이승만 대통령이 독도를 포함한 인접 해양에 대한 대한민국 주권을 선언함.", type: "kr_record" },
+            { year: 1953, title: "독도의용수비대 활동", content: "홍순칠 등 민간인들이 자발적으로 독도에 상주하며 일본의 침범을 막아냄.", type: "kr_record" },
+            { year: 1965, title: "한일기본조약", content: "독도 문제를 명시적으로 해결하지 않고 봉합하여 갈등이 잠복 상태로 남음.", type: "conflict" },
+            { year: 1998, title: "신한일어업협정", content: "독도가 한일 중간수역에 포함되면서 영유권 논란과 관련한 국민적 우려가 발생함.", type: "conflict" },
+            { year: 2005, title: "다케시마의 날 제정", content: "일본 시마네현이 2월 22일을 '다케시마의 날'로 제정하여 도발을 공식화함.", type: "conflict" },
+            { year: 2011, title: "일본 교과서 왜곡", content: "일본 중학교 교과서 다수에 독도 영유권 주장을 기술하여 역사 왜곡을 본격화함.", type: "conflict" }
+        ];
+
+        // --- Data Source: Dictionary ---
+        const dictionaryData = [
+            { term: "우산도 (于山島)", category: "name", description: "삼국시대 우산국에서 유래한 독도의 옛 이름입니다." },
+            { term: "석도 (石島)", category: "name", description: "1900년 대한제국 칙령 제41호에 등장하는 이름으로, '돌섬(독섬)'을 한자로 표기한 것입니다." },
+            { term: "마쓰시마 (松島)", category: "name", description: "과거 일본이 독도를 부르던 명칭입니다. 당시 일본은 울릉도를 '죽도(다케시마)'라고 불렀습니다." },
+            { term: "리앙쿠르암 (Liancourt Rocks)", category: "name", description: "1849년 프랑스 포경선 리앙쿠르호가 발견하고 붙인 서양식 명칭입니다." },
+            { term: "세종실록지리지 (1454)", category: "doc", description: "독도(우산)와 울릉도(무릉)가 울진현에 속하며 두 섬이 서로 보인다고 기록한 조선의 관찬서입니다." },
+            { term: "은주시청합기 (1667)", category: "doc", description: "울릉도와 독도가 일본 영토 밖임을 스스로 기록한 최초의 일본 고문헌입니다." },
+            { term: "태정관 지령 (1877)", category: "doc", description: "일본 메이지 정부가 독도는 일본과 관계없음을 공식 인정한 결정적 증거입니다." },
+            { term: "대한제국 칙령 제41호 (1900)", category: "doc", description: "고종 황제가 독도(석도)를 울릉군의 관할 구역으로 명시하여 반포한 법령입니다." },
+            { term: "시마네현 고시 제40호 (1905)", category: "doc", description: "일본이 독도를 주인 없는 땅이라 주장하며 불법 편입을 시도한 고시입니다." },
+            { term: "SCAPIN 제677호 (1946)", category: "doc", description: "연합군이 독도를 일본의 통치권에서 명확히 제외한다고 명시한 지령입니다." },
+            { term: "안용복", category: "person", description: "조선 숙종 때 일본에 건너가 울릉도와 독도가 조선 땅임을 주장한 어부입니다." },
+            { term: "독도의용수비대", category: "person", description: "1950년대 일본의 침범을 막기 위해 민간인들이 자발적으로 결성한 수비 단체입니다." },
+            { term: "평화선 (이승만 라인)", category: "person", description: "1952년 선포된 해양 주권 선언으로, 독도 영유권을 대내외에 명확히 했습니다." },
+            { term: "다케시마의 날", category: "person", description: "일본 시마네현이 불법 편입을 기념하여 제정한 날로, 한일 갈등의 주요 원인입니다." }
+        ];
+
+        // --- Logic: Analytics ---
+        function renderChart() {
+            const ctx = document.getElementById('eraChart').getContext('2d');
+            const centuries = { '15세기': 0, '16세기': 0, '17세기': 0, '18세기': 0, '19세기': 0, '20세기': 0, '21세기': 0 };
+            historyData.forEach(item => {
+                const century = Math.ceil(item.year / 100) + '세기';
+                if (centuries[century] !== undefined) centuries[century]++;
+            });
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: Object.keys(centuries),
+                    datasets: [{
+                        label: '사건 수',
+                        data: Object.values(centuries),
+                        backgroundColor: '#0ea5e9',
+                        borderRadius: 8
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: { y: { beginAtZero: true, grid: { color: '#f5f5f4' } }, x: { grid: { display: false } } }
+                }
+            });
+        }
+
+        // --- Logic: Dictionary ---
+        function renderDictionary(filterCat = 'all', searchTerm = '') {
+            const grid = document.getElementById('dictionary-grid');
+            grid.innerHTML = '';
+            const filtered = dictionaryData.filter(item => {
+                const matchesCat = filterCat === 'all' || item.category === filterCat;
+                const matchesSearch = item.term.includes(searchTerm) || item.description.includes(searchTerm);
+                return matchesCat && matchesSearch;
+            });
+
+            if (filtered.length === 0) {
+                grid.innerHTML = '<div class="col-span-full text-center py-10 text-stone-400">검색 결과가 없습니다.</div>';
+                return;
+            }
+
+            filtered.forEach(item => {
+                const colorMap = { name: 'border-sky-500', doc: 'border-emerald-500', person: 'border-amber-500' };
+                const card = document.createElement('div');
+                card.className = `dict-card bg-white p-5 rounded-xl border border-stone-100 shadow-sm ${colorMap[item.category]}`;
+                card.innerHTML = `
+                    <h4 class="font-bold text-stone-900 mb-2">${item.term}</h4>
+                    <p class="text-stone-600 text-sm leading-relaxed">${item.description}</p>
+                `;
+                grid.appendChild(card);
+            });
+        }
+
+        // --- Logic: Timeline ---
+        function renderTimeline(filter = 'all') {
+            const container = document.getElementById('timeline-container');
+            container.innerHTML = '<div class="timeline-line hidden sm:block"></div>';
+            const displayData = historyData.filter(item => filter === 'all' || item.type === filter);
+
+            displayData.forEach((item, index) => {
+                const isLeft = index % 2 === 0;
+                const typeMap = { kr_record: 'bg-sky-100 text-sky-800', jp_ack: 'bg-emerald-100 text-emerald-800', conflict: 'bg-rose-100 text-rose-800' };
+                const wrapper = document.createElement('div');
+                wrapper.className = `flex flex-col sm:flex-row items-center justify-between w-full mb-8 relative z-10`;
+                
+                const cardContent = `
+                    <div class="timeline-card bg-white p-6 rounded-2xl shadow-sm border border-stone-100 text-left">
+                        <div class="flex justify-between items-center mb-2">
+                            <span class="text-xs font-bold px-2 py-0.5 rounded ${typeMap[item.type] || 'bg-stone-100'}">${item.type}</span>
+                            <span class="font-black text-stone-300 text-xl">${item.year}</span>
+                        </div>
+                        <h3 class="font-bold text-stone-900 mb-1">${item.title}</h3>
+                        <p class="text-stone-600 text-sm">${item.content}</p>
+                    </div>
+                `;
+
+                if (window.innerWidth >= 640) {
+                    wrapper.innerHTML = isLeft 
+                        ? `<div class="w-5/12 text-right pr-8">${cardContent}</div><div class="timeline-dot w-6 h-6 rounded-full bg-sky-500 border-4 border-white shadow"></div><div class="w-5/12"></div>`
+                        : `<div class="w-5/12"></div><div class="timeline-dot w-6 h-6 rounded-full bg-sky-500 border-4 border-white shadow"></div><div class="w-5/12 pl-8">${cardContent}</div>`;
+                } else {
+                    wrapper.className = "flex w-full mb-6 pl-10 relative";
+                    wrapper.innerHTML = `<div class="timeline-dot absolute left-0 top-6 w-4 h-4 rounded-full bg-sky-500 border-2 border-white"></div><div class="w-full">${cardContent}</div>`;
+                }
+                container.appendChild(wrapper);
+            });
+        }
+
+        // --- Init ---
+        document.addEventListener('DOMContentLoaded', () => {
+            renderChart();
+            renderDictionary();
+            renderTimeline();
+
+            // Timeline Filters
+            document.querySelectorAll('.filter-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+                    e.currentTarget.classList.add('active');
+                    renderTimeline(e.currentTarget.dataset.filter);
+                });
+            });
+
+            // Dictionary Filters
+            document.querySelectorAll('.dict-filter-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    document.querySelectorAll('.dict-filter-btn').forEach(b => b.classList.remove('active'));
+                    e.currentTarget.classList.add('active');
+                    renderDictionary(e.currentTarget.dataset.category, document.getElementById('dictSearch').value);
+                });
+            });
+
+            // Dictionary Search
+            document.getElementById('dictSearch').addEventListener('input', (e) => {
+                const activeCat = document.querySelector('.dict-filter-btn.active').dataset.category;
+                renderDictionary(activeCat, e.target.value);
+            });
+
+            window.addEventListener('resize', () => {
+                renderTimeline(document.querySelector('.filter-btn.active').dataset.filter);
+            });
+        });
+    </script>
+</body>
+</html>
