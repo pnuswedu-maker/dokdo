@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>독도: 역사의 기록, 진실의 연대기</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Noto Sans KR', sans-serif; background-color: #fafaf9; color: #1c1917; }
+        .timeline-line { position: absolute; left: 50%; transform: translateX(-50%); width: 2px; height: 100%; background-color: #e7e5e4; z-index: 0; }
+        .timeline-dot { z-index: 10; transition: all 0.3s ease; }
+        .timeline-card { transition: all 0.3s ease; }
+        .timeline-card:hover { transform: translateY(-4px); box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05); }
+        .filter-btn.active { background-color: #0c4a6e; color: white; border-color: #0c4a6e; }
+        /* Chart container override */
+        .chart-wrapper {
+            position: relative;
+            width: 100%;
+            max-width: 700px;
+            margin: 0 auto;
+            height: 350px;
+        }
+        @media (max-width: 640px) {
+            .timeline-line { left: 20px; transform: none; }
+            .chart-wrapper { height: 300px; }
+        }
+        .highlight-text { background: linear-gradient(120deg, #e0f2fe 0%, #e0f2fe 100%); background-repeat: no-repeat; background-size: 100% 40%; background-position: 0 88%; }
+    </style>
+    <!-- Chosen Palette: Warm Neutrals & Deep Sea Blue (Stone for bg, Sky/Blue for accents) -->
+    <!-- Application Structure Plan:
+        1. Hero Section: Emotional connection, title, and total years covered.
+        2. Analytics Dashboard: "History at a Glance" using Chart.js to show event frequency by century, proving the long-standing history vs modern conflict.
+        3. Interactive Timeline: The core experience. Vertical layout (responsive) with filtering capabilities (Records vs. Conflict vs. International).
+        4. Detail View: Cards expand or highlight to show "Content & Meaning" clearly.
+        5. Engagement: A simple fact check/quiz module at the bottom.
+        Rationale: Grouping by 'Era' or 'Type' helps users understand that Dokdo is not just a modern issue but has deep historical roots.
+    -->
+    <!-- Visualization & Content Choices:
+        1. Event Frequency Chart (Bar): Shows density of records over centuries. Goal: Inform/Analyze. 
+        2. Filterable Timeline: HTML/JS. Goal: Explore/Organize.
+        3. Category Badges: Visual coding for 'Korea Record', 'Japan Acknowledgement', 'Conflict'. Goal: Classify.
+        4. Interaction: Click to filter, Hover for emphasis.
+    -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+</head>
+<body class="antialiased min-h-screen flex flex-col">
+
+    <!-- Header / Hero -->
+    <header class="bg-stone-900 text-stone-100 py-12 px-4 sm:px-6 lg:px-8 relative overflow-hidden">
+        <!-- Home Button Added Here -->
+        <div class="absolute top-4 left-4 z-20">
+            <a href="index.html" class="flex items-center gap-2 bg-white/10 hover:bg-white/20 backdrop-blur-md text-white px-4 py-2 rounded-full border border-white/20 transition-all text-sm font-medium">
+                <span>🏠</span>
+                <span>홈으로</span>
+            </a>
+        </div>
+
+        <div class="max-w-4xl mx-auto relative z-10 text-center pt-8 sm:pt-4">
+            <h1 class="text-4xl sm:text-5xl font-black mb-4 tracking-tight text-sky-400">독도, 역사의 진실</h1>
+            <p class="text-lg sm:text-xl text-stone-300 max-w-2xl mx-auto font-light leading-relaxed">
+                1454년부터 2011년까지, 문헌과 조약이 증명하는 <span class="text-sky-200 font-semibold">대한민국 영토 주권</span>의 기록을 확인하세요.
+            </p>
+        </div>
+        <div class="absolute top-0 left-0 w-full h-full opacity-10 bg-[url('https://images.unsplash.com/photo-1549558549-415a1cd1685c?q=80&w=2000&auto=format&fit=crop')] bg-cover bg-center"></div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="flex-grow w-full max-w-5xl mx-auto px-4 sm:px-6 py-12 space-y-16">
+
+        <!-- Section 1: History at a Glance (Analytics) -->
+        <section>
+            <div class="mb-8 text-center sm:text-left">
+                <h2 class="text-2xl font-bold text-stone-800 flex items-center justify-center sm:justify-start gap-2">
+                    <span class="text-sky-600">📊</span> 데이터로 보는 독도 역사
+                </h2>
+                <p class="mt-2 text-stone-600 max-w-3xl">
+                    수백 년에 걸친 역사적 기록은 독도가 단순히 현대의 분쟁 지역이 아님을 보여줍니다. 
+                    <span class="font-semibold text-stone-800">조선시대의 확고한 기록</span>부터 <span class="font-semibold text-stone-800">근현대의 국제적 격변</span>까지, 사건의 흐름을 분석했습니다.
+                </p>
+            </div>
+
+            <div class="bg-white rounded-2xl shadow-sm border border-stone-200 p-6">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-8 items-center">
+                    <div class="md:col-span-2">
+                        <div class="chart-wrapper">
+                            <canvas id="eraChart"></canvas>
+                        </div>
+                    </div>
+                    <div class="space-y-6">
+                        <div class="bg-sky-50 p-5 rounded-xl border border-sky-100">
+                            <h3 class="text-sm font-semibold text-sky-800 uppercase tracking-wider mb-1">총 기록된 주요 사건</h3>
+                            <p class="text-4xl font-bold text-sky-900" id="totalEvents">18<span class="text-lg font-normal ml-1">건</span></p>
+                        </div>
+                        <div class="bg-stone-50 p-5 rounded-xl border border-stone-100">
+                            <h3 class="text-sm font-semibold text-stone-500 uppercase tracking-wider mb-1">최초의 공식 기록</h3>
+                            <p class="text-xl font-bold text-stone-800">1454년</p>
+                            <p class="text-sm text-stone-600 mt-1">세종실록지리지</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 2: Interactive Timeline -->
+        <section id="timeline-section">
+            <div class="flex flex-col sm:flex-row justify-between items-center mb-8 gap-4">
+                <div class="text-center sm:text-left">
+                    <h2 class="text-2xl font-bold text-stone-800 flex items-center justify-center sm:justify-start gap-2">
+                        <span class="text-sky-600">⏳</span> 연대기 탐색
+                    </h2>
+                    <p class="text-stone-500 text-sm mt-1">카테고리를 선택하여 역사의 흐름을 필터링해보세요.</p>
+                </div>
+                
+                <!-- Filters -->
+                <div class="flex flex-wrap justify-center gap-2" id="filters">
+                    <button class="filter-btn active px-4 py-2 rounded-full text-sm font-medium border border-stone-300 text-stone-600 bg-white hover:bg-stone-50 transition-colors" data-filter="all">전체 보기</button>
+                    <button class="filter-btn px-4 py-2 rounded-full text-sm font-medium border border-stone-300 text-stone-600 bg-white hover:bg-stone-50 transition-colors" data-filter="kr_record">🇰🇷 한국의 기록</button>
+                    <button class="filter-btn px-4 py-2 rounded-full text-sm font-medium border border-stone-300 text-stone-600 bg-white hover:bg-stone-50 transition-colors" data-filter="jp_ack">🇯🇵 일본의 인정</button>
+                    <button class="filter-btn px-4 py-2 rounded-full text-sm font-medium border border-stone-300 text-stone-600 bg-white hover:bg-stone-50 transition-colors" data-filter="conflict">⚠️ 분쟁 및 도발</button>
+                </div>
+            </div>
+
+            <!-- Timeline Container -->
+            <div class="relative py-4" id="timeline-container">
+                <div class="timeline-line hidden sm:block"></div>
+                <!-- Dynamic Content Will Be Injected Here -->
+            </div>
+        </section>
+
+        <!-- Section 3: Key Takeaway (Static Highlight) -->
+        <section class="bg-stone-800 rounded-3xl p-8 sm:p-12 text-center text-stone-300">
+            <h3 class="text-2xl sm:text-3xl font-bold text-white mb-6">"독도는 역사적, 지리적, 국제법적으로<br>명백한 대한민국의 고유 영토입니다."</h3>
+            <p class="max-w-3xl mx-auto leading-relaxed text-lg">
+                1900년 <span class="text-sky-400 font-bold">대한제국 칙령 제41호</span>는 독도가 울릉군의 관할구역임을 근대법적으로 명확히 했습니다. 
+                반면 일본의 1905년 편입 조치는 러일전쟁 중의 불법적인 강점 행위였습니다. 
+                우리의 역사를 바르게 아는 것이 영토 수호의 첫걸음입니다.
+            </p>
+        </section>
+
+    </main>
+
+    <footer class="bg-white border-t border-stone-200 mt-12 py-8">
+        <div class="max-w-5xl mx-auto px-4 text-center text-stone-500 text-sm">
+            <p>© 2024 독도 역사 아카이브. 출처: 독도 관련 주요 연대기 (dokdo_history_table.md)</p>
+        </div>
+    </footer>
+
+    <script>
+        // --- Data Source ---
+        const historyData = [
+            { year: 1454, title: "세종실록지리지", content: "우산(독도)과 무릉(울릉도)이 강원도 울진현에 속한다고 기록하여 독도를 우리 영토로 명시함.", type: "kr_record" },
+            { year: 1531, title: "신증동국여지승람", content: "독도가 우리 영토임을 다시 한번 밝히는 국가 차원의 관찬 지리지를 편찬함.", type: "kr_record" },
+            { year: 1667, title: "은주시청합기", content: "일본의 문헌임에도 불구하고 울릉도와 독도가 일본 영토 밖(조선 땅)임을 기록함.", type: "jp_ack" },
+            { year: 1693, title: "1차 안용복 사건", content: "안용복이 일본으로 끌려가 독도가 조선의 땅임을 당당히 주장함.", type: "kr_record" },
+            { year: 1696, title: "2차 안용복 사건", content: "일본에 건너가 불법 침범에 항의하였으며, 일본 막부가 '울릉도 도해 금지령'을 내리는 계기가 됨.", type: "kr_record" },
+            { year: 1785, title: "삼국접양지도", content: "일본의 하야시 시헤이가 제작한 지도로, 독도를 조선색(황색)으로 칠하고 '조선의 것'이라 표기함.", type: "jp_ack" },
+            { year: 1877, title: "태정관 지령", content: "일본 최고 행정기관이 \"독도와 울릉도는 일본과 관계없다\"고 공식적으로 인정함.", type: "jp_ack" },
+            { year: 1900, title: "대한제국 칙령 41호", content: "고종 황제가 독도를 울릉군의 관할 구역으로 명문화하여 공식 반포함.", type: "kr_record" },
+            { year: 1905, title: "시마네현 고시 40호", content: "일본이 러일전쟁 중 독도를 불법적으로 '다케시마'로 편입하는 무효한 행위를 함.", type: "conflict" },
+            { year: 1906, title: "심흥택 보고서", content: "울릉군수 심흥택이 독도의 일본 편입 소식을 듣고 중앙 정부에 긴급 보고함.", type: "kr_record" },
+            { year: 1946, title: "SCAPIN 제677호", content: "연합군최고사령관 지령으로, 독도를 일본의 행정 및 통치권에서 명확히 제외함.", type: "international" },
+            { year: 1951, title: "샌프란시스코 강화조약", content: "일본의 한국 독립 인정을 명시했으나, 독도 명칭 누락으로 향후 분쟁의 불씨가 됨.", type: "conflict" },
+            { year: 1952, title: "평화선 선포", content: "이승만 대통령이 독도를 포함한 인접 해양에 대한 대한민국 주권을 선언함.", type: "kr_record" },
+            { year: 1953, title: "독도의용수비대 활동", content: "홍순칠 등 민간인들이 자발적으로 독도에 상주하며 일본의 침범을 막아냄.", type: "kr_record" },
+            { year: 1965, title: "한일기본조약", content: "독도 문제를 명시적으로 해결하지 않고 봉합하여 갈등이 잠복 상태로 남음.", type: "conflict" },
+            { year: 1998, title: "신한일어업협정", content: "독도가 한일 중간수역에 포함되면서 영유권 논란과 관련한 국민적 우려가 발생함.", type: "conflict" },
+            { year: 2005, title: "다케시마의 날 제정", content: "일본 시마네현이 2월 22일을 '다케시마의 날'로 제정하여 도발을 공식화함.", type: "conflict" },
+            { year: 2011, title: "일본 교과서 왜곡", content: "일본 중학교 교과서 다수에 독도 영유권 주장을 기술하여 역사 왜곡을 본격화함.", type: "conflict" }
+        ];
+
+        // Type Mapping for Visuals
+        const typeConfig = {
+            kr_record: { label: "🇰🇷 한국의 기록/활동", color: "bg-sky-100 border-sky-300 text-sky-800", icon: "📜" },
+            jp_ack: { label: "🇯🇵 일본의 인정", color: "bg-emerald-100 border-emerald-300 text-emerald-800", icon: "✅" },
+            conflict: { label: "⚠️ 분쟁/도발", color: "bg-rose-100 border-rose-300 text-rose-800", icon: "⚔️" },
+            international: { label: "🌐 국제 조약", color: "bg-indigo-100 border-indigo-300 text-indigo-800", icon: "⚖️" }
+        };
+        
+        function getTypeConfig(type) {
+            return typeConfig[type] || { label: "기타", color: "bg-gray-100", icon: "📌" };
+        }
+
+        // --- Logic: Analytics ---
+        function renderChart() {
+            const ctx = document.getElementById('eraChart').getContext('2d');
+            
+            // Group by Century
+            const centuries = {
+                '15세기': 0, '16세기': 0, '17세기': 0, '18세기': 0, '19세기': 0, '20세기': 0, '21세기': 0
+            };
+            
+            historyData.forEach(item => {
+                const century = Math.ceil(item.year / 100) + '세기';
+                if (centuries[century] !== undefined) centuries[century]++;
+            });
+
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: Object.keys(centuries),
+                    datasets: [{
+                        label: '주요 사건 수',
+                        data: Object.values(centuries),
+                        backgroundColor: [
+                            '#e0f2fe', '#bae6fd', '#7dd3fc', '#38bdf8', '#0ea5e9', '#0284c7', '#0369a1'
+                        ],
+                        borderRadius: 6,
+                        borderSkipped: false
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return `${context.raw}건의 주요 기록`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            grid: { display: true, drawBorder: false, color: '#f5f5f4' },
+                            ticks: { precision: 0 }
+                        },
+                        x: {
+                            grid: { display: false }
+                        }
+                    }
+                }
+            });
+        }
+
+        // --- Logic: Timeline Rendering ---
+        const container = document.getElementById('timeline-container');
+
+        function renderTimeline(filter = 'all') {
+            container.innerHTML = '<div class="timeline-line hidden sm:block absolute left-1/2 transform -translate-x-1/2 w-0.5 h-full bg-stone-200"></div>';
+            
+            let displayData = historyData;
+            if (filter !== 'all') {
+                if (filter === 'conflict') {
+                    displayData = historyData.filter(item => item.type === 'conflict' || item.type === 'international');
+                } else {
+                    displayData = historyData.filter(item => item.type === filter);
+                }
+            }
+
+            if (displayData.length === 0) {
+                container.innerHTML += `<div class="text-center py-10 text-stone-400">해당하는 기록이 없습니다.</div>`;
+                return;
+            }
+
+            displayData.forEach((item, index) => {
+                const isLeft = index % 2 === 0;
+                const config = getTypeConfig(item.type);
+                
+                const cardHtml = `
+                    <div class="timeline-card bg-white p-6 rounded-2xl shadow-sm border border-stone-100 relative group cursor-default text-left">
+                        <div class="flex items-center justify-between mb-3">
+                            <span class="text-xs font-bold uppercase tracking-wider px-2 py-1 rounded ${config.color}">
+                                ${config.icon} ${config.label}
+                            </span>
+                            <span class="text-2xl font-black text-stone-200 group-hover:text-stone-300 transition-colors">${item.year}</span>
+                        </div>
+                        <h3 class="text-lg font-bold text-stone-900 mb-2 group-hover:text-sky-700 transition-colors">${item.title}</h3>
+                        <p class="text-stone-600 text-sm leading-relaxed">${item.content}</p>
+                    </div>
+                `;
+
+                const wrapper = document.createElement('div');
+                wrapper.className = `flex flex-col sm:flex-row items-center justify-between w-full mb-8 relative z-10`;
+                
+                const centerDot = `
+                    <div class="timeline-dot absolute left-0 sm:left-1/2 w-8 h-8 rounded-full border-4 border-white bg-sky-500 shadow-md flex items-center justify-center sm:-translate-x-1/2 transform -translate-y-1/2 sm:translate-y-0 mt-0 sm:mt-0 z-20">
+                        <span class="text-[10px] text-white font-bold">${index + 1}</span>
+                    </div>
+                `;
+                
+                if (window.innerWidth >= 640) {
+                    if (isLeft) {
+                        wrapper.innerHTML = `
+                            <div class="w-full sm:w-5/12 text-right pr-8 pl-4 sm:pl-0">
+                                ${cardHtml}
+                            </div>
+                            ${centerDot}
+                            <div class="w-full sm:w-5/12 pl-8 pr-4 sm:pr-0 hidden sm:block"></div>
+                        `;
+                    } else {
+                        wrapper.innerHTML = `
+                            <div class="w-full sm:w-5/12 text-right pr-8 hidden sm:block"></div>
+                            ${centerDot}
+                            <div class="w-full sm:w-5/12 pl-8 pr-4 sm:pr-0">
+                                ${cardHtml}
+                            </div>
+                        `;
+                    }
+                } else {
+                    wrapper.className = `flex flex-col w-full mb-6 relative pl-8`; 
+                    const mobileDot = `
+                        <div class="timeline-dot absolute left-0 top-6 w-4 h-4 rounded-full border-2 border-white bg-sky-500 shadow-md z-20"></div>
+                    `;
+                    const mobileLine = `<div class="absolute left-2 top-0 bottom-0 w-0.5 bg-stone-200 z-0"></div>`;
+                    
+                    wrapper.innerHTML = `
+                        ${mobileLine}
+                        ${mobileDot}
+                        <div class="w-full">
+                            ${cardHtml}
+                        </div>
+                    `;
+                }
+
+                container.appendChild(wrapper);
+            });
+        }
+
+        // --- Event Listeners ---
+        document.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('totalEvents').innerHTML = historyData.length + '<span class="text-lg font-normal ml-1">건</span>';
+            renderChart();
+            renderTimeline('all');
+            
+            let lastWidth = window.innerWidth;
+            window.addEventListener('resize', () => {
+                if (window.innerWidth !== lastWidth) {
+                    lastWidth = window.innerWidth;
+                    const activeFilter = document.querySelector('.filter-btn.active').dataset.filter;
+                    renderTimeline(activeFilter);
+                }
+            });
+
+            const buttons = document.querySelectorAll('.filter-btn');
+            buttons.forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    buttons.forEach(b => b.classList.remove('active'));
+                    e.currentTarget.classList.add('active');
+                    const filter = e.currentTarget.dataset.filter;
+                    renderTimeline(filter);
+                });
+            });
+        });
+    </script>
+</body>
+</html>
